@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import GlassCard from '@/components/GlassCard'
 import { Dog, Clock, MapPin, Calendar, CreditCard } from 'lucide-react'
@@ -9,6 +10,7 @@ type ServiceType = '15min' | '30min' | '60min' | 'dropin' | 'sitting'
 type TimingType = 'asap' | 'scheduled'
 
 export default function BookPage() {
+  const router = useRouter()
   const [step, setStep] = useState(1)
   const [serviceType, setServiceType] = useState<ServiceType>('30min')
   const [timing, setTiming] = useState<TimingType>('asap')
@@ -24,9 +26,16 @@ export default function BookPage() {
   ]
 
   const handleSubmit = async () => {
-    // This would integrate with AWS API
-    console.log('Booking:', { serviceType, timing, scheduledTime, specialInstructions })
-    alert('Booking submitted! (Demo mode - AWS integration pending)')
+    // Redirect to checkout with booking details
+    const params = new URLSearchParams({
+      type: 'booking',
+      service: serviceType,
+      timing: timing,
+      amount: services.find(s => s.id === serviceType)?.price.toString() || '0',
+      scheduledTime: scheduledTime || '',
+    })
+    
+    router.push(`/checkout?${params.toString()}`)
   }
 
   return (

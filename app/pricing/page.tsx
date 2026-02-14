@@ -1,10 +1,22 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import GlassCard from '@/components/GlassCard'
 import { Check } from 'lucide-react'
 
 export default function PricingPage() {
+  const router = useRouter()
+  
+  const handleSubscribe = (plan: string, price: number) => {
+    const params = new URLSearchParams({
+      type: 'subscription',
+      plan: plan,
+      amount: price.toString(),
+    })
+    router.push(`/checkout?${params.toString()}`)
+  }
+  
   return (
     <div className="min-h-screen pt-24 pb-12 px-4">
       <div className="max-w-6xl mx-auto">
@@ -72,6 +84,7 @@ export default function PricingPage() {
               'Free walk report analytics',
               '24/7 priority support',
             ]}
+            onSubscribe={handleSubscribe}
           />
           <SubscriptionCard
             title="Walker Premium"
@@ -84,6 +97,7 @@ export default function PricingPage() {
               'Training resources',
               'Lower platform fees',
             ]}
+            onSubscribe={handleSubscribe}
           />
         </div>
 
@@ -155,10 +169,11 @@ function ServiceCard({ name, price, description, popular }: {
   )
 }
 
-function SubscriptionCard({ title, price, features }: {
+function SubscriptionCard({ title, price, features, onSubscribe }: {
   title: string
   price: number
   features: string[]
+  onSubscribe: (plan: string, price: number) => void
 }) {
   return (
     <GlassCard className="glass-hover">
@@ -175,7 +190,10 @@ function SubscriptionCard({ title, price, features }: {
           </li>
         ))}
       </ul>
-      <button className="glass-button w-full py-3 bg-gradient-to-r from-primary-500 to-accent-500">
+      <button 
+        onClick={() => onSubscribe(title, price)}
+        className="glass-button w-full py-3 bg-gradient-to-r from-primary-500 to-accent-500"
+      >
         Get Started
       </button>
     </GlassCard>

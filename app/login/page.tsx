@@ -1,24 +1,50 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import GlassCard from '@/components/GlassCard'
-import { Mail, Lock, User } from 'lucide-react'
+import { Mail, Lock, User, UserCircle } from 'lucide-react'
 import Link from 'next/link'
+import { useAuthStore } from '@/lib/auth'
 
 export default function LoginPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { login, signup, isAuthenticated } = useAuthStore()
   const [isSignUp, setIsSignUp] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     name: '',
+    role: 'owner' as 'owner' | 'walker',
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const redirect = searchParams.get('redirect') || '/'
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push(redirect)
+    }
+  }, [isAuthenticated, router, redirect])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // This would integrate with authentication (AWS Cognito, Auth0, etc.)
-    console.log('Login/Signup:', formData)
-    alert('Authentication not yet implemented. This would connect to AWS Cognito or Auth0.')
+    setLoading(true)
+    
+    try {
+      if (isSignUp) {
+        await signup(formData.name, formData.email, formData.password, formData.role)
+      } else {
+        await login(formData.email, formData.password)
+      }
+      router.push(redirect)
+    } catch (error) {
+      alert('Authentication failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,21 +73,56 @@ export default function LoginPage() {
         <GlassCard>
           <form onSubmit={handleSubmit} className="space-y-6">
             {isSignUp && (
-              <div>
-                <label className="block text-white mb-2 flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required={isSignUp}
-                  className="glass-input"
-                  placeholder="John Doe"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="block text-white mb-2 flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required={isSignUp}
+                    className="glass-input"
+                    placeholder="John Doe"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white mb-2 flex items-center gap-2">
+                    <UserCircle className="w-4 h-4" />
+                    I am a
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: 'owner' })}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        formData.role === 'owner'
+                          ? 'border-primary-400 bg-primary-500/20'
+                          : 'border-white/20 glass'
+                      }`}
+                    >
+                      <p className="text-white font-semibold">Pet Owner</p>
+                      <p className="text-white/60 text-xs mt-1">Book walks</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: 'walker' })}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        formData.role === 'walker'
+                          ? 'border-primary-400 bg-primary-500/20'
+                          : 'border-white/20 glass'
+                      }`}
+                    >
+                      <p className="text-white font-semibold">Walker</p>
+                      <p className="text-white/60 text-xs mt-1">Earn money</p>
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
 
             <div>
@@ -110,9 +171,17 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="glass-button w-full py-3 text-white text-lg bg-gradient-to-r from-primary-500 to-accent-500"
+              disabled={loading}
+              className="glass-button w-full py-3 text-white text-lg bg-gradient-to-r from-primary-500 to-accent-500 disabled:opacity-50"
             >
-              {isSignUp ? 'Sign Up' : 'Sign In'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                </span>
+              ) : (
+                isSignUp ? 'Sign Up' : 'Sign In'
+              )}
             </button>
           </form>
 
