@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import GlassCard from '@/components/GlassCard'
 import { CheckCircle, Home, Calendar } from 'lucide-react'
 import Link from 'next/link'
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const sessionId = searchParams.get('session')
@@ -111,5 +111,21 @@ export default function CheckoutSuccessPage() {
         </GlassCard>
       </motion.div>
     </div>
+  )
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center px-4 pt-20">
+          <GlassCard>
+            <p className="text-white">Loading...</p>
+          </GlassCard>
+        </div>
+      }
+    >
+      <CheckoutSuccessPageContent />
+    </Suspense>
   )
 }

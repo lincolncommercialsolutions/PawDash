@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import GlassCard from '@/components/GlassCard'
@@ -8,7 +8,7 @@ import { useAuthStore } from '@/lib/auth'
 import { CreditCard, Lock, ShieldCheck, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isAuthenticated } = useAuthStore()
@@ -352,5 +352,21 @@ function TrustBadge({ icon, text }: { icon: React.ReactNode; text: string }) {
       <div className="text-green-400">{icon}</div>
       <span className="text-sm text-white/80">{text}</span>
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center pt-20 px-4">
+          <GlassCard>
+            <p className="text-white">Loading checkout...</p>
+          </GlassCard>
+        </div>
+      }
+    >
+      <CheckoutPageContent />
+    </Suspense>
   )
 }

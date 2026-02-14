@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import GlassCard from '@/components/GlassCard'
@@ -8,7 +8,7 @@ import { Mail, Lock, User, UserCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useAuthStore } from '@/lib/auth'
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { login, signup, isAuthenticated } = useAuthStore()
@@ -228,5 +228,21 @@ export default function LoginPage() {
         </div>
       </motion.div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center px-4 pt-20">
+          <GlassCard>
+            <p className="text-white">Loading...</p>
+          </GlassCard>
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   )
 }
