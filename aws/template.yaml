@@ -1,0 +1,245 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: PawDash Backend Infrastructure
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs18.x
+    Environment:
+      Variables:
+        USERS_TABLE: !Ref UsersTable
+        PETS_TABLE: !Ref PetsTable
+        BOOKINGS_TABLE: !Ref BookingsTable
+        WALKERS_TABLE: !Ref WalkersTable
+        S3_BUCKET: !Ref UploadsBucket
+
+Resources:
+  # API Gateway
+  PawDashApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+      Auth:
+        ApiKeyRequired: false
+
+  # DynamoDB Tables
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: pawdash-users
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  PetsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: pawdash-pets
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: petId
+          AttributeType: S
+        - AttributeName: ownerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: petId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: OwnerIndex
+          KeySchema:
+            - AttributeName: ownerId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  BookingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: pawdash-bookings
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: bookingId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: walkerId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: bookingId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: WalkerIndex
+          KeySchema:
+            - AttributeName: walkerId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  WalkersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: pawdash-walkers
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: walkerId
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: walkerId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  # S3 Bucket for uploads
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'pawdash-uploads-${AWS::AccountId}'
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+            AllowedHeaders:
+              - '*'
+
+  # Lambda Functions
+  CreateBookingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: aws/lambda/bookings/
+      Handler: create.handler
+      Events:
+        CreateBooking:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PawDashApi
+            Path: /bookings
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BookingsTable
+
+  GetBookingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: aws/lambda/bookings/
+      Handler: get.handler
+      Events:
+        GetBooking:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PawDashApi
+            Path: /bookings/{id}
+            Method: get
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BookingsTable
+
+  DispatchWalkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: aws/lambda/dispatch/
+      Handler: index.handler
+      Events:
+        DispatchWalker:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PawDashApi
+            Path: /dispatch
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WalkersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BookingsTable
+
+  CreateWalkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: aws/lambda/walkers/
+      Handler: create.handler
+      Events:
+        CreateWalker:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PawDashApi
+            Path: /walkers
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WalkersTable
+
+  GetWalkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: aws/lambda/walkers/
+      Handler: get.handler
+      Events:
+        GetWalker:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PawDashApi
+            Path: /walkers/{id}
+            Method: get
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref WalkersTable
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${PawDashApi}.execute-api.${AWS::Region}.amazonaws.com/prod/"
+  
+  UploadsBucketName:
+    Description: "S3 bucket for uploads"
+    Value: !Ref UploadsBucket
