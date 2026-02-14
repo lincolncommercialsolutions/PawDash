@@ -5,7 +5,7 @@ const nextConfig = {
   },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    OPEN_ROUTER_API_KEY: process.env.OPEN_ROUTER_API_KEY,
     AWS_REGION: process.env.AWS_REGION || 'us-east-1',
   },
 }

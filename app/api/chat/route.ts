@@ -1,9 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || '',
-})
 
 const SYSTEM_PROMPT = `You are a helpful customer service assistant for PawDash, an on-demand pet walking and sitting service (like Uber, but for dog walking).
 
@@ -37,10 +32,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Convert history to Anthropic format
+    // Convert history to OpenAI/OpenRouter format
     const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
       ...history.map((msg: { role: string; content: string }) => ({
-        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        role: msg.role,
         content: msg.content,
       })),
       {
@@ -49,20 +45,33 @@ export async function POST(request: NextRequest) {
       },
     ]
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: messages,
+    // Call OpenRouter API
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPEN_ROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+        'X-Title': 'PawDash',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: messages,
+        max_tokens: 1024,
+      }),
     })
 
-    const assistantMessage = response.content[0].type === 'text' 
-      ? response.content[0].text 
-      : 'I apologize, but I had trouble processing that. Could you rephrase?'
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    const assistantMessage = data.choices?.[0]?.message?.content || 
+      'I apologize, but I had trouble processing that. Could you rephrase?'
 
     return NextResponse.json({ message: assistantMessage })
   } catch (error) {
-    console.error('Anthropic API error:', error)
+    console.error('OpenRouter API error:', error)
     return NextResponse.json(
       { error: 'Failed to process chat message' },
       { status: 500 }
